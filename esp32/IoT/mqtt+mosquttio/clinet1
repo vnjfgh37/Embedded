@@ -1,0 +1,72 @@
+#include "EspMQTTClient.h"
+#include "DHT.h"
+#include "string"
+#define VR_PIN A0 //enter your pin number
+#define DHTPIN 19 //enter your pin number
+#define DHTTYPE DHT11 
+EspMQTTClient client(
+    "wifi name",      // #1 wifi must be 2G
+    "wifi password",        // #2
+    "mosqutto server ip",     // #3   MQTT Broker server ip
+    "MQTTUsername",     //      Can be omitted if not needed // 필요 없다면 생략 가능
+    "MQTTPassword",     //      Can be omitted if not needed
+    "client name",             // #4   Client name that uniquely identify your device
+    1883                // #5   The MQTT port, default to 1883. this line can be omitted
+);
+
+//for use DHT sensor
+DHT dht(DHTPIN, DHTTYPE);
+
+char *topic_temp = "myhome/firstfloor/myroom/temp";
+char *topic_humi = "myhome/firstfloor/myroom/humi";
+
+//send temp and humidity
+ void tx() {
+    float h = dht.readHumidity();
+    float t = dht.readTemperature();
+    client.publish(topic_humi, String(h));
+    client.publish(topic_temp, String(t));
+ }
+
+//void rx(const String &payload) {
+//  Serial.println(payload);
+//}
+
+void setup() {
+    Serial.begin(9600); // #6
+    pinMode(LED_BUILTIN, OUTPUT);
+    dht.begin();
+    client.enableDebuggingMessages(); // Enable debugging messages sent to serial output
+    client.enableHTTPWebUpdater(); // Enable the web updater. User and password default to values of MQTTUsername and MQTTPassword. These can be overrited with enableHTTPWebUpdater("user", "password").
+    client.enableLastWillMessage("TestClient/lastwill", "I am going offline");  // You can activate the retain flag by setting the third parameter to true
+}
+
+// This function is called once everything is connected (Wifi and MQTT)
+// WARNING : YOU MUST IMPLEMENT IT IF YOU USE EspMQTTClient
+void onConnectionEstablished() {
+    // Subscribe to "mytopic/test" and display received message to Serial
+    //client.subscribe("mytopic/test", [](const String & payload) { Serial.println(payload); });
+    
+    // Subscribe to "mytopic/wildcardtest/#" and display received message to Serial
+    //client.subscribe("mytopic/wildcardtest/#", [](const String & topic, const String & payload) { Serial.println(topic + ": " + payload); });
+    
+    // Publish a message to "mytopic/test"
+    //client.publish("mytopic/test", "This is a message"); // You can activate the retain flag by setting the third parameter to true
+    
+    // Execute delayed instructions
+    //client.executeDelayed(5 * 1000, []() { client.publish("mytopic/test", "This is a message sent 5 seconds later"); });
+
+    // Subscribe 1회만 하면 지속적으로 콜백함수로 호출됨
+//    client.subscribe(topic, [](const String &payload) {
+//        //rx(payload);
+//        Serial.println(payload);    
+//    });
+    
+}
+
+void loop() {
+    //only send temp and humidity
+    tx();   
+    delay(1000);
+    client.loop(); // 수신 용도
+}
